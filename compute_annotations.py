@@ -7,7 +7,7 @@ import json
 import torch
 import numpy as np
 import copy
-from tqdm import tqdm  # ✅ Added progress bar
+from tqdm import tqdm
 from mast3r.model import AsymmetricMASt3R
 from mast3r.cloud_opt.sparse_ga import sparse_global_alignment
 from dust3r.utils.image import load_images
@@ -37,17 +37,17 @@ if os.path.exists(output_json):
 else:
     dataset_entries = []
 
-# ✅ Store processed image paths for quick lookup
+
 processed_paths = set(entry["rgb_path"] for entry in dataset_entries)
 
-# Iterate through each sequence
-image_count = 0  # Track number of processed images
+
+image_count = 0
 total_images = sum(len(os.listdir(os.path.join(root_dir, seq, sub_seq, "fl_rgb"))) // 2 
                    for seq in os.listdir(root_dir) if os.path.isdir(os.path.join(root_dir, seq))
                    for sub_seq in os.listdir(os.path.join(root_dir, seq)) 
                    if os.path.isdir(os.path.join(root_dir, seq, sub_seq)))
 
-with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added progress bar
+with tqdm(total=total_images, desc="Processing Images") as pbar:
     for seq in os.listdir(root_dir):
         seq_path = os.path.join(root_dir, seq)
         if not os.path.isdir(seq_path):
@@ -64,7 +64,7 @@ with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added pr
             if not os.path.exists(rgb_path) or not os.path.exists(ir_path):
                 continue
 
-            # Get all RGB images
+            
             rgb_images = sorted([f for f in os.listdir(rgb_path) if f.endswith(".png")])
 
             # Process images in pairs
@@ -74,10 +74,10 @@ with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added pr
                 ir_img1 = os.path.join(ir_path, rgb_images[i].replace("fl_rgb", "fl_ir_aligned"))
                 ir_img2 = os.path.join(ir_path, rgb_images[i + 1].replace("fl_rgb", "fl_ir_aligned"))
 
-                # ✅ Skip if already processed
+            
                 if img1 in processed_paths and img2 in processed_paths:
-                    print(f"🔄 Skipping {img1} and {img2}, already processed.")
-                    pbar.update(1)  # Update progress bar
+                    print(f"Skipping {img1} and {img2}, already processed.")
+                    pbar.update(1)
                     continue
 
                 # Load images
@@ -128,15 +128,15 @@ with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added pr
                 np.save(depth_filename1, depthmap1)
                 np.save(depth_filename2, depthmap2)
 
-                # ✅ Save metadata to JSON
+                # Save metadata to JSON
                 dataset_entries.append({
                     "rgb_path": img1,
                     "ir_path": ir_img1,
                     "intrinsics": K1,
                     "extrinsics": {"rotation": R1, "translation": t1},
                     "depth_map_path": depth_filename1,
-                    "original_shape": true_shape1,  # Convert to standard Python int
-                    "modified_shape": list(map(int, depthmap1.shape))  # Convert shape to standard Python int
+                    "original_shape": true_shape1, 
+                    "modified_shape": list(map(int, depthmap1.shape)) 
                 })
 
                 dataset_entries.append({
@@ -145,13 +145,13 @@ with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added pr
                     "intrinsics": K2,
                     "extrinsics": {"rotation": R2, "translation": t2},
                     "depth_map_path": depth_filename2,
-                    "original_shape": true_shape2,  # Convert to standard Python int
-                    "modified_shape": list(map(int, depthmap2.shape))  # Convert shape to standard Python int
+                    "original_shape": true_shape2,
+                    "modified_shape": list(map(int, depthmap2.shape))  
                 })
 
-                image_count += 2  # Since we process two images per iteration
-                processed_paths.update([img1, img2])  # ✅ Add to processed set
-                pbar.update(1)  # ✅ Update progress bar
+                image_count += 2
+                processed_paths.update([img1, img2])
+                pbar.update(1)
 
                 # Save dataset metadata every `n_save_interval` images
                 if image_count % n_save_interval == 0:
@@ -163,4 +163,4 @@ with tqdm(total=total_images, desc="Processing Images") as pbar:  # ✅ Added pr
 with open(output_json, "w") as f:
     json.dump(dataset_entries, f, indent=4)
 
-print(f"✅ Final dataset processing complete. Saved metadata in {output_json}.")
+print(f"Final dataset processing complete. Saved metadata in {output_json}.")

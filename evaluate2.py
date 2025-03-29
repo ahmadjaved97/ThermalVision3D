@@ -10,6 +10,7 @@ from tqdm import tqdm
 from dust3r.inference import inference
 from dust3r.model import AsymmetricCroCo3DStereo
 from dust3r.utils.image import load_images
+from skimage.metrics import structural_similarity as ssim
 from rich import print
 
 
@@ -32,7 +33,7 @@ def enhance_thermal_image(image):
     return final
 
 
-def preprocess_and_save(image_path, save_path, resolution=224, use_enhance=True):
+def preprocess_and_save(image_path, save_path, resolution=224, use_enhance=False):
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     image = np.stack([image] * 3, axis=-1)
     image = cv2.resize(image, (resolution, resolution), interpolation=cv2.INTER_NEAREST)
@@ -47,27 +48,32 @@ def compute_depth_metrics(pred, gt):
     pred = pred[mask]
     gt = gt[mask]
     thresh = np.maximum(gt / pred, pred / gt)
+    pred_norm = (pred - pred.min()) / (pred.max() - pred.min())
+    gt_norm = (gt - gt.min()) / (gt.max() - gt.min())
+    pred_img = (pred_norm * 255).astype(np.uint8)
+    gt_img = (gt_norm * 255).astype(np.uint8)
+    ssim_score = ssim(gt_img, pred_img)
+
     return {
         "RMSE": np.sqrt(np.mean((pred - gt) ** 2)),
         "AbsRel": np.mean(np.abs(pred - gt) / gt),
-        "Log10": np.mean(np.abs(np.log10(pred) - np.log10(gt))),
+        "SSIM": ssim_score,
         "Acc<1.25": (thresh < 1.25).mean(),
         "Acc<1.25^2": (thresh < 1.25 ** 2).mean(),
         "Acc<1.25^3": (thresh < 1.25 ** 3).mean()
     }
 
 
-def main():
-    metadata_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224.json"
-    # model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal5/checkpoint-best.pth"
-    model_path = "/home/s63ajave_hpc/ThermalVision3D/DUSt3R_ViTLarge_BaseDecoder_224_linear.pth"
-    resolution = 224
-    use_enhance = False
+def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=False):
+
+    if use_rgb and use_enhance:
+        print("[yellow]⚠️ 'use_enhance' is ignored because 'use_rgb' is True.[/yellow]")
+        use_enhance = False
 
     with open(metadata_path, "r") as f:
         metadata = json.load(f)
 
-    metadata = metadata[int(0.95 * len(metadata)):]  # test split
+    # metadata = metadata[int(0.95 * len(metadata)):]  # test split
     pairs = [(i, i + 1) for i in range(0, len(metadata), 2) if i + 1 < len(metadata)]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -76,19 +82,19 @@ def main():
     os.makedirs("temp_inputs", exist_ok=True)
     os.makedirs("depth_outputs", exist_ok=True)
 
-    all_metrics = {k: [] for k in ["RMSE", "AbsRel", "Log10", "Acc<1.25", "Acc<1.25^2", "Acc<1.25^3"]}
+    all_metrics = {k: [] for k in ["RMSE", "AbsRel", "SSIM", "Acc<1.25", "Acc<1.25^2", "Acc<1.25^3"]}
 
     for idx, (i1, i2) in enumerate(tqdm(pairs)):
         meta1, meta2 = metadata[i1], metadata[i2]
-        img1_path, img2_path = meta1["ir_path"], meta2["ir_path"]
+        img1_path = meta1["rgb_path"] if use_rgb else meta1["ir_path"]
+        img2_path = meta2["rgb_path"] if use_rgb else meta2["ir_path"]
         gt_path = meta1["depth_map_path"]
 
         temp1_path = preprocess_and_save(img1_path, f"temp_inputs/temp1_{idx:02d}.png", resolution, use_enhance)
         temp2_path = preprocess_and_save(img2_path, f"temp_inputs/temp2_{idx:02d}.png", resolution, use_enhance)
 
-        temp_paths = [temp1_path, temp2_path]
         images = load_images([temp1_path, temp2_path], size=resolution)
-        output = inference([tuple(images)], model,device=device, batch_size=1, verbose=None)
+        output = inference([tuple(images)], model, device=device, batch_size=1, verbose=None)
 
         pred_depth = output['pred1']['pts3d'][..., 2].squeeze(0).cpu().numpy()
         gt_depth = np.load(gt_path).reshape(resolution, resolution).astype(np.float32)
@@ -130,4 +136,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    metadata_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_test.json"
+    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal3/checkpoint-best.pth"
+    # model_path = "/home/s63ajave_hpc/ThermalVision3D/DUSt3R_ViTLarge_BaseDecoder_224_linear.pth"
+    resolution = 224
+    use_rgb = False
+    use_enhance = True
+    main(metadata_path, model_path, resolution, use_rgb, use_enhance)

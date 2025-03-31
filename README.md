@@ -10,7 +10,7 @@ This Dust3r repository contains the freiburg data loader class inside `dust3r/du
 Any changes made to the Mast3r reposity are present here.
 
 ### 3. Pseudo GT Visualization `(3D Camera Transformations and Visualizations.ipynb)`
-All the visualization and verifcation for pseudo gt is present in this jupyter notebook.
+All the visualization and verifcation for pseudo gt is present in this jupyter notebook. The camera frustum visualizations are present in the images folder.
 
 
 #### 4. Dataset Evaluation `(evaluate.py)` 

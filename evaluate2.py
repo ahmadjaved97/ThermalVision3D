@@ -1,3 +1,6 @@
+# file: evaluate.py
+# This file is used to evaluate a model on some predefined depth metrics.
+
 import sys
 sys.path.append("/home/s63ajave_hpc/dust3r")
 
@@ -15,6 +18,7 @@ from rich import print
 
 
 def enhance_thermal_image(image):
+    """Enhances thermal images using CLAHE, sharpening, and Gaussian blur techniques."""
     if image.dtype != np.uint8:
         image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
@@ -33,17 +37,26 @@ def enhance_thermal_image(image):
     return final
 
 
-def preprocess_and_save(image_path, save_path, resolution=224, use_enhance=False):
-    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    image = np.stack([image] * 3, axis=-1)
+def preprocess_and_save(image_path, save_path, resolution=224, use_enhance=False, use_rgb=False):
+    """Preprocesses and saves an image (either RGB or grayscale) with optional enhancement"""
+    if use_rgb:
+        image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
+    
+    else:
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        image = np.stack([image] * 3, axis=-1)
     image = cv2.resize(image, (resolution, resolution), interpolation=cv2.INTER_NEAREST)
+    
     if use_enhance:
         image = enhance_thermal_image(image)
     cv2.imwrite(save_path, cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+    
     return save_path
 
 
 def compute_depth_metrics(pred, gt):
+    """Computes depth-related metrics including RMSE, AbsRel, SSIM, and accuracy thresholds."""
+
     mask = (gt > 0)
     pred = pred[mask]
     gt = gt[mask]
@@ -65,15 +78,16 @@ def compute_depth_metrics(pred, gt):
 
 
 def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=False):
-
+    """Main function to process metadata, run depth prediction, and compute evaluation metrics."""
     if use_rgb and use_enhance:
-        print("[yellow]⚠️ 'use_enhance' is ignored because 'use_rgb' is True.[/yellow]")
+        print("[yellow]'use_enhance' is ignored because 'use_rgb' is True.[/yellow]")
         use_enhance = False
 
     with open(metadata_path, "r") as f:
         metadata = json.load(f)
 
     # metadata = metadata[int(0.95 * len(metadata)):]  # test split
+    # pairs (0,1)(2,3)(4,5) and so on are formed on the test set for evaluation
     pairs = [(i, i + 1) for i in range(0, len(metadata), 2) if i + 1 < len(metadata)]
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -90,12 +104,13 @@ def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=F
         img2_path = meta2["rgb_path"] if use_rgb else meta2["ir_path"]
         gt_path = meta1["depth_map_path"]
 
-        temp1_path = preprocess_and_save(img1_path, f"temp_inputs/temp1_{idx:02d}.png", resolution, use_enhance)
-        temp2_path = preprocess_and_save(img2_path, f"temp_inputs/temp2_{idx:02d}.png", resolution, use_enhance)
+        temp1_path = preprocess_and_save(img1_path, f"temp_inputs/temp1_{idx:02d}.png", resolution, use_enhance, use_rgb)
+        temp2_path = preprocess_and_save(img2_path, f"temp_inputs/temp2_{idx:02d}.png", resolution, use_enhance, use_rgb)
 
         images = load_images([temp1_path, temp2_path], size=resolution)
         output = inference([tuple(images)], model, device=device, batch_size=1, verbose=None)
 
+        # Prediction results for image 1
         pred_depth = output['pred1']['pts3d'][..., 2].squeeze(0).cpu().numpy()
         gt_depth = np.load(gt_path).reshape(resolution, resolution).astype(np.float32)
 
@@ -106,6 +121,7 @@ def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=F
         for k, v in metrics.items():
             all_metrics[k].append(v)
 
+        # Prediction results for image 2
         pred_depth_2 = output['pred2']['pts3d_in_other_view'][..., 2].squeeze(0).cpu().numpy()
         gt_depth_2 = np.load(meta2["depth_map_path"]).reshape(resolution, resolution).astype(np.float32)
 
@@ -130,16 +146,15 @@ def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=F
             gt_colored = cv2.applyColorMap(gt_norm.astype(np.uint8), cv2.COLORMAP_JET)
             cv2.imwrite(os.path.join(save_dir, f"gt_depth_{idx:02d}.png"), gt_colored)
 
-    print("\n✅ [Final Average Metrics]")
+    print("\n[Final Average Metrics]")
     for k in all_metrics:
         print(f"{k}: {np.mean(all_metrics[k]):.4f}")
 
 
 if __name__ == "__main__":
     metadata_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_test.json"
-    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal3/checkpoint-best.pth"
-    # model_path = "/home/s63ajave_hpc/ThermalVision3D/DUSt3R_ViTLarge_BaseDecoder_224_linear.pth"
+    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"
     resolution = 224
     use_rgb = False
-    use_enhance = True
+    use_enhance = False
     main(metadata_path, model_path, resolution, use_rgb, use_enhance)

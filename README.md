@@ -21,8 +21,11 @@ This file was used to evalute the dust3r model on the test set.
 3. `AIS Inference Visualization.ipynb`: Visualized results from the AIS dataset.
 4. `Freiburg Test Data Visualization.ipynb`: Visualized results from the Freiburg Dataset using the best model and the baseline model.
 
-#### 6. Dataset Splitter `(split_json.py)` 
+#### 6. Tensorboard Logs
+All the tensorboard logs are present inside `tensorboard_logs` folder for the experiments mentioned in the report.
+
+#### 7. Dataset Splitter `(split_json.py)` 
 Splits a JSON dataset into train and test sets based on a user-defined ratio, preserving order or using optional shuffling.
 
-#### 7. Deduplicator by RGB Path  `(find_duplicates.py)`
+#### 8. Deduplicator by RGB Path  `(find_duplicates.py)`
 Removes duplicate entries from a JSON dataset based on the `rgb_path` field and overwrites the original file with the cleaned data.

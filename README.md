@@ -12,6 +12,7 @@ Any changes made to the Mast3r reposity are present here.
 ### 3. Pseudo GT Visualization `(3D Camera Transformations and Visualizations.ipynb)`
 All the visualization and verifcation for pseudo gt is present in this jupyter notebook.
 
+
 #### 4. Dataset Evaluation `(evaluate.py)` 
 This file was used to evalute the dust3r model on the test set.
 
@@ -23,6 +24,10 @@ This file was used to evalute the dust3r model on the test set.
 
 #### 6. Tensorboard Logs
 All the tensorboard logs are present inside `tensorboard_logs` folder for the experiments mentioned in the report.
+
+#### 7. Model Weights
+The best model weight is present [here](https://drive.google.com/drive/u/1/folders/1JhtNpGae-8R82Q2oPjXF_ytY3BALFCOm?q=sharedwith:public%20parent:1JhtNpGae-8R82Q2oPjXF_ytY3BALFCOm).
+Other model weights are not uploaded because of the size issue (each model weight is 6GB).
 
 #### 7. Dataset Splitter `(split_json.py)` 
 Splits a JSON dataset into train and test sets based on a user-defined ratio, preserving order or using optional shuffling.

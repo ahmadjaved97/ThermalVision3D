@@ -1,4 +1,4 @@
-# file: process_freiburg_dataset.py
+# file: compute_annotations.py
 # This file is used to compute the pseudo-groundtruth to create the dataset for training dust3r.
 
 import sys
@@ -45,7 +45,7 @@ def save_progress(dataset_entries, output_json, count):
         json.dump(dataset_entries, f, indent=4)
     print(f"Saved progress after {count} images.")
 
-def reset_cache(cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache1"):
+def reset_cache(cache_path="./cache1"):
     """Resets the cache by deleting the existing cache folder and creating a new one"""
 
     if os.path.exists(cache_path):
@@ -114,7 +114,7 @@ def process_image_pair(img1, img2, ir_img1, ir_img2, model, device, shared_intri
     scene = sparse_global_alignment(
         imgs=filelist,
         pairs_in=pairs,
-        cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache1",
+        cache_path="./cache1",
         model=model,
         lr1=0.2, niter1=1000,
         lr2=0.02, niter2=10,
@@ -180,7 +180,7 @@ def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json
     
     """Processes the Freiburg dataset by extracting image pairs, generating depthmaps, and saving metadata to a JSON file at regular intervals."""
     
-    root_dir = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/freiburg_dataset/train"
+    root_dir = "/home/nfs/inf6/data/datasets/ThermalDBs/Freiburg/train"
     shared_intrinsics = True
     model_path = "./naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
 
@@ -247,7 +247,7 @@ def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json
     print(f"Final dataset processing complete. Saved metadata in {output_json}.")
 
 if __name__ == "__main__":
-    output_json = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224.json"
-    output_depth_dir = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_depth"
-    resized_img_dir = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_imgs"
+    output_json = "./dataset_v1_224.json"
+    output_depth_dir = "./dataset_v1_224_depth"
+    resized_img_dir = "./dataset_v1_224_imgs"
     process_freiburg_dataset(output_json=output_json, output_depth_dir=output_depth_dir, resized_img_dir=resized_img_dir, n_save_interval=2)

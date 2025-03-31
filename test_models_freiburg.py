@@ -1,3 +1,5 @@
+# file: test_models_freiburg.py
+# This file is used to genrate the output from the freiburg test dataset
 import sys
 import json
 import os
@@ -94,7 +96,6 @@ def run_depth_inference_with_paths(img1_path, img2_path, model, output_prefix="i
     print(f"✅ Inference done for {output_prefix}")
 
 
-# === Run with JSON Input ===
 if __name__ == "__main__":
     json_file = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_test.json"  # <-- replace with actual path
     model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"

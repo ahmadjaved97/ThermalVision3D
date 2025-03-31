@@ -152,8 +152,8 @@ def main(metadata_path, model_path, resolution=224, use_rgb=False, use_enhance=F
 
 
 if __name__ == "__main__":
-    metadata_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_test.json"
-    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"
+    metadata_path = "./dataset_v1_224_test.json"
+    model_path = "./dust3r_freiburg_224_thermal8/checkpoint-best.pth"
     resolution = 224
     use_rgb = False
     use_enhance = False

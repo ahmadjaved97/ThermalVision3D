@@ -38,6 +38,6 @@ def split_dataset(input_file, train_ratio=0.8):
     }
 
 if __name__ == "__main__":
-    dataset_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224.json"
+    dataset_path = "./dataset_v1_224.json"
     result = split_dataset(dataset_path, train_ratio=0.95)
     print(result)

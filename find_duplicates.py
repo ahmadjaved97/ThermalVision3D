@@ -39,5 +39,5 @@ def deduplicate_by_rgb_path(json_path):
     print(f"Cleaned JSON saved to: {json_path}")
 
 if __name__ == "__main__":
-    dataset_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224.json"
+    dataset_path = "./dataset_v1_224.json"
     deduplicate_by_rgb_path(dataset_path)

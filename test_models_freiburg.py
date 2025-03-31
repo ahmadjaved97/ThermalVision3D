@@ -97,8 +97,8 @@ def run_depth_inference_with_paths(img1_path, img2_path, model, output_prefix="i
 
 
 if __name__ == "__main__":
-    json_file = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224_test.json"  # <-- replace with actual path
-    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"
+    json_file = "./dataset_v1_224_test.json"  # <-- replace with actual path
+    model_path = "./checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"
     resolution = 224
     use_enhance = False
 

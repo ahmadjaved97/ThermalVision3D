@@ -130,8 +130,8 @@ def process_folder(folder_path, model, output_prefix="thermal_pair", resolution=
 
 
 if __name__ == "__main__":
-    folder_path = "/home/s63ajave_hpc/ThermalVision3D/flir_boson/s1"
-    model_path = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/checkpoints/dust3r_freiburg_224_thermal8/checkpoint-best.pth"
+    folder_path = "./flir_boson/s1"
+    model_path = "./dust3r_freiburg_224_thermal8/checkpoint-best.pth"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = load_model(model_path, device)

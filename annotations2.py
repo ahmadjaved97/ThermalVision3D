@@ -1,4 +1,5 @@
 # file: process_freiburg_dataset.py
+# This file is used to compute the pseudo-groundtruth to create the dataset for training dust3r.
 
 import sys
 sys.path.append('./mast3r')
@@ -26,6 +27,7 @@ def extract_timestamp(filename):
     return 0.0
 
 def make_intrinsics_np(focal, pp):
+    """Creates a 3x3 intrinsic camera matrix from focal length and principal point values"""
     if focal.ndim == 0:
         fx = fy = float(focal)
     else:
@@ -37,16 +39,24 @@ def load_model(model_path, device):
     return AsymmetricMASt3R.from_pretrained(model_path).to(device)
 
 def save_progress(dataset_entries, output_json, count):
+    """Saves dataset entries to a JSON file and prints a progress message"""
+    
     with open(output_json, "w") as f:
         json.dump(dataset_entries, f, indent=4)
-    print(f"✅ Saved progress after {count} images.")
+    print(f"Saved progress after {count} images.")
 
-def reset_cache(cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache"):
+def reset_cache(cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache1"):
+    """Resets the cache by deleting the existing cache folder and creating a new one"""
+
     if os.path.exists(cache_path):
         shutil.rmtree(cache_path)
     os.makedirs(cache_path, exist_ok=True)
 
 def crop_resize_if_necessary(image, depthmap, intrinsics, resolution, rng=None, aug_crop=0, info=None):
+    """
+    Crops and resizes an image and depthmap if necessary, adjusting the intrinsics based on the given resolution and optional augmentations.
+    Taken from the BaseStereoVision class from dust3r to insure images are in correct dimensions before saving them to the dataset.
+    """
     if not isinstance(image, Image.Image):
         image = Image.fromarray(image)
 
@@ -83,16 +93,20 @@ def crop_resize_if_necessary(image, depthmap, intrinsics, resolution, rng=None, 
     return image, depthmap, intrinsics2
 
 def process_image_pair(img1, img2, ir_img1, ir_img2, model, device, shared_intrinsics, image_size, output_depth_dir, resized_img_dir):
+    """
+    Processes a pair of images by resizing, aligning, extracting depthmaps, pose information and intrinsics and saving the results
+    in a JSON format.
+    """
     os.makedirs(resized_img_dir, exist_ok=True)
 
-    # Step 1: Resize and save the images to resized_img_dir
+    # Resize and save the images to resized_img_dir
     img1_resized_path = os.path.join(resized_img_dir, os.path.basename(img1))
     img2_resized_path = os.path.join(resized_img_dir, os.path.basename(img2))
 
     Image.open(img1).convert("RGB").resize((image_size, image_size), resample=Image.Resampling.LANCZOS).save(img1_resized_path)
     Image.open(img2).convert("RGB").resize((image_size, image_size), resample=Image.Resampling.LANCZOS).save(img2_resized_path)
 
-    # Step 2: Reload resized images and pass to sparse alignment
+    # Reload resized images and pass to sparse alignment
     filelist = [img1_resized_path, img2_resized_path]
     imgs = load_images(filelist, size=image_size, verbose=True, square_ok=True)
     pairs = make_pairs(imgs, scene_graph='complete', symmetrize=True)
@@ -100,7 +114,7 @@ def process_image_pair(img1, img2, ir_img1, ir_img2, model, device, shared_intri
     scene = sparse_global_alignment(
         imgs=filelist,
         pairs_in=pairs,
-        cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache",
+        cache_path="/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/cache1",
         model=model,
         lr1=0.2, niter1=1000,
         lr2=0.02, niter2=10,
@@ -161,7 +175,11 @@ def process_image_pair(img1, img2, ir_img1, ir_img2, model, device, shared_intri
     return entry1, entry2
 
 
-def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json", output_depth_dir="depth_maps_t1", resized_img_dir="resized_dir", n_save_interval=10):
+def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json", output_depth_dir="depth_maps_t1", 
+                            resized_img_dir="resized_dir", n_save_interval=10):
+    
+    """Processes the Freiburg dataset by extracting image pairs, generating depthmaps, and saving metadata to a JSON file at regular intervals."""
+    
     root_dir = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/freiburg_dataset/train"
     shared_intrinsics = True
     model_path = "./naver/MASt3R_ViTLarge_BaseDecoder_512_catmlpdpt_metric.pth"
@@ -177,7 +195,9 @@ def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json
         with open(output_json, "r") as f:
             dataset_entries = json.load(f)
 
-    processed_paths = set(entry["rgb_path"] for entry in dataset_entries)
+    # processed_paths = set(entry["rgb_path"] for entry in dataset_entries)
+    processed_paths = set(os.path.basename(entry["rgb_path"]) for entry in dataset_entries)
+
     image_count = 0
 
     for seq in os.listdir(root_dir):
@@ -204,15 +224,15 @@ def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json
                 ir_img1 = os.path.join(ir_path, rgb_images[i].replace("fl_rgb", "fl_ir_aligned"))
                 ir_img2 = os.path.join(ir_path, rgb_images[i + 1].replace("fl_rgb", "fl_ir_aligned"))
 
-                if img1 in processed_paths and img2 in processed_paths:
-                    print(f"🔄 Skipping {img1} and {img2}, already processed.")
+                if os.path.basename(img1) in processed_paths and os.path.basename(img2) in processed_paths:
+                    print(f"Skipping {img1} and {img2}, already processed.")
                     continue
 
                 try:
                     entry1, entry2 = process_image_pair(img1, img2, ir_img1, ir_img2, model, device,
                                                     shared_intrinsics, image_size, output_depth_dir, resized_img_dir)
                 except Exception as e:
-                    print(f"❌ Failed to process pair: {img1}, {img2}\n{e}")
+                    print(f"Failed to process pair: {img1}, {img2}\n{e}")
                     continue
 
                 dataset_entries.extend([entry1, entry2])
@@ -224,7 +244,7 @@ def process_freiburg_dataset(image_size = 224, output_json="dataset_info_o1.json
                     reset_cache()
 
     save_progress(dataset_entries, output_json, image_count)
-    print(f"✅ Final dataset processing complete. Saved metadata in {output_json}.")
+    print(f"Final dataset processing complete. Saved metadata in {output_json}.")
 
 if __name__ == "__main__":
     output_json = "/lustre/mlnvme/data/s63ajave_hpc-cuda_lab/dataset_v1_224.json"
